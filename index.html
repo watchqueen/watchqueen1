@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>WATCHQUEEN 주문완료안내</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --gold: #d8c49c;
+      --gold-dark: #b2976a;
+      --text: #3a3a3a;
+      --sub: #777;
+      --bg: #faf8f4;
+      --white: #ffffff;
+      --border: #e6e2db;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px 18px 80px;
+    }
+
+    /* 헤더 영역 */
+    .header {
+      padding: 10px 0 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 18px;
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: 1.4px;
+      color: var(--gold-dark);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .page-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2f2f2f;
+      margin-bottom: 8px;
+    }
+
+    .intro-text {
+      font-size: 14px;
+      color: var(--sub);
+      line-height: 1.7;
+      background: var(--white);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.03);
+    }
+
+    /* 섹션 제목 */
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 22px 0 10px;
+      color: #444;
+    }
+
+    /* Q&A 카드 */
+    .qa-item {
+      background: var(--white);
+      border: 1px solid var(--border);
+      padding: 16px 14px;
+      border-radius: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      transition: box-shadow 0.25s, transform 0.25s;
+      cursor: pointer;
+    }
+
+    .qa-item:hover {
+      box-shadow: 0 6px 14px rgba(0,0,0,0.07);
+      transform: translateY(-1px);
+    }
+
+    .qa-question {
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--gold-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .arrow {
+      transition: transform 0.25s ease;
+      font-size: 12px;
+      color: var(--sub);
+    }
+
+    .qa-item.active .arrow {
+      transform: rotate(180deg);
+    }
+
+    .qa-answer {
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--text);
+      display: none;
+    }
+
+    .qa-item.active .qa-answer {
+      display: block;
+    }
+
+    .qa-answer strong {
+      color: var(--gold-dark);
+    }
+
+    /* 링크 스타일 */
+    .qa-answer a {
+      color: #336699;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .qa-answer a:hover {
+      text-decoration: underline;
+    }
+
+    /* 답변 안 이미지 공통 스타일 */
+    .answer-img {
+      width: 100%;
+      border-radius: 12px;
+      margin: 10px 0 4px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+      display: block;
+    }
+
+    .answer-img-caption {
+      font-size: 12px;
+      color: var(--sub);
+      margin-bottom: 6px;
+    }
+
+    /* 여러 장 이미지용 그리드 */
+    .img-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 34px;
+      font-size: 13px;
+      color: var(--sub);
+    }
+
+    .footer strong {
+      color: var(--gold-dark);
+    }
+
+    @media (max-width: 500px) {
+      .brand-title { font-size: 18px; }
+      .page-title { font-size: 16px; }
+      .intro-text { font-size: 13.5px; }
+      .qa-question { font-size: 14px; }
+      .qa-answer { font-size: 13.5px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <!-- 헤더 / 안내문 -->
+    <header class="header">
+      <div class="brand-title">WATCHQUEEN</div>
+      <div class="page-title">주문완료 안내</div>
+      <div class="intro-text">
+        믿고 주문해 주셔서 감사합니다.<br>
+        아래 공지사항은 모두 찬찬히 읽어보시고 숙지 부탁드립니다.
+      </div>
+    </header>
+
+    <!-- Q&A 섹션 제목 -->
+    <div class="section-title">주문 후 꼭 확인해 주세요 (총 7가지)</div>
+
+    <!-- Q1 -->
+    <div class="qa-item">
+      <div class="qa-question">
+        Q1. 구매자 전용 사이트 안내
+        <span class="arrow">▼</span>
+      </div>
+      <div class="qa-answer">
+        구매자 전용 사이트 안내입니다.<br><br>
+
+        • 구매자 전용 잡화 보러가기<br>
+        <a href="https://www.zadooszsz.com" target="_blank">
+          https://www.zadooszsz.com
+        </a><br><br>
+
+        • 인스타그램 1<br>
+        <a href="https://www.instagram.com/qntks87878?igsh=MXJqY2FxeWU1dWZqYw==" target="_blank">
+          https://www.instagram.com/qntks87878?igsh=MXJqY2FxeWU1dWZqYw==
+        </a><br><br>
+
+        • 인스타그램 2<br>
+        <a href="https://www.instagram.com/gdnfdk4112?igsh=dHg4bzZ4c3h4ajE4" target="_blank">
+          https://www.instagram.com/gdnfdk4112?igsh=dHg4bzZ4c3h4ajE4
+        </a><br><br>
+
+        • 인스타그램 3<br>
+        <a href="https://www.instagram.com/watchju5433?igsh=cGF1OG9yNjc1ZjQ=" target="_blank">
+          https://www.instagram.com/watchju5433?igsh=cGF1OG9yNjc1ZjQ=
+        </a><br><br>
+
+        • 시계 후기 &amp; 실사<br>
+        <a href="https://sweetsz00.com/posts/%EC%8B%9C%EA%B3%84%ED%9B%84%EA%B8%B0&%EC%8B%A4%EC%82%AC" target="_blank">
+          https://sweetsz00.com/posts/시계후기&amp;실사
+        </a><br><br>
+
+        • 잡화 후기 &amp; 실사<br>
+        <a href="https://sweetsz00.com/posts/%EC%9E%A1%ED%99%94%ED%9B%84%EA%B8%B0&%EC%8B%A4%EC%82%AC" target="_blank">
+          https://sweetsz00.com/posts/잡화후기&amp;실사
+        </a><br><br>
+
+        • 회원 전용 밴드<br>
+        <a href="https://band.us/n/ada8b9O8o1c8u" target="_blank">
+          https://band.us/n/ada8b9O8o1c8u
+        </a>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="qa-item">
+      <div class="qa-question">
+        Q2. 배송 기간 안내
+        <span class="arrow">▼</span>
+      </div>
+      <div class="qa-answer">
+        기간은 보통 <strong>2~3주</strong> 정도 걸립니다 ^^<br><br>
+        시계는 가방처럼 단순히 외형만 보는 것이 아니라,<br>
+        <strong>작동 테스트 시간이 꼭 필요해요 🙏</strong><br><br>
+        
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="qa-item">
+      <div class="qa-question">
+        Q3. 시계 박스에 관하여
+        <span class="arrow">▼</span>
+      </div>
+      <div class="qa-answer">
+
+        시계 박스는 처음부터 시계랑 같이 포장돼서 완벽하게 나오는 게 아니라,<br>
+        이렇게 중국 시장에 깔아 놓고 파는 걸 별도로 사다가<br>
+        <strong>풀 구성인 척</strong> 셀러들이 5~10만 원은 더 받고 있습니다 🤣<br><br>
+
+        하지만 실상은 <strong>원가 15,000원</strong>에 무거운 이유로 배송비가 25,000원 나와<br>
+        <strong>총 4만 원에 추가구매 가능한 상황</strong>이에요.<br><br>
+
+        필요하시다면 추가 구매 가능하십니다만,<br>
+        <strong>굳이 돈 주고 살 만한 퀄리티는 아닙니다 🙏</strong><br><br>
+
+        제 개인적인 의견을 더하자면,<br>
+        쉽게 손상되기에 <strong>비싼 쓰레기를 돈 주고 사는 느낌</strong>이라<br>
+        굳이 필요 없으시면 안 사셔도 전혀 괜찮습니다.<br><br>
+
+        다만 선물용이시거나 박스 보관을 깔끔하게 하고 싶으신 경우에는<br>
+        필요하실 때 추가 구매 가능하시니 편하게 말씀 주세요 🙏<br><br>
+
+        
+        <!-- ▼ 시계 박스 실사 (1~8) -->
+        <img src="q3-1.jpg" class="answer-img">
+        <div class="answer-img-caption">시계 박스 실사 (1)</div>
+
+        <img src="q3-2.jpg" class="answer-img">
+        <div class="answer-img-caption">시계 박스 실사 (2)</div>
+
+        <img src="q3-3.jpg" class="answer-img">
+        <div class="answer-img-caption">시계 박스 실사 (3)</div>
+
+        <img src="q3-4.jpg" class="answer-img">
+        <div class="answer-img-caption">시계 박스 실사 (4)</div>
+
+        <img src="q3-5.jpg" class="answer-img">
+        <div class="answer-img-caption">시계 박스 실사 (5)</div>
+
+        <img src="q3-6.jpg" class="answer-img">
+        <div class="answer-img-caption">시계 박스 실사 (6)</div>
+
+        <img src="q3-7.jpg" class="answer-img">
+        <div class="answer-img-caption">시계 박스 실사 (7)</div>
+
+        <img src="q3-8.jpg" class="answer-img">
+        <div class="answer-img-caption">시계 박스 실사 (8)</div>
+
+        <br>
+        
+
+        저는 마진 없이 <strong>그대로 구매대행</strong>해서 보내드리는 거라,<br>
+        내구성이나 완성도 때문에 오히려 욕먹을 때도 있어요 😭<br><br>
+
+        하지만 시계 본품 포장은 저희가 <strong>완벽하게 안전하게</strong> 해서 보내드리니<br>
+        박스가 없어도 전혀 걱정하지 않으셔도 됩니다!<br><br>
+
+        
+
+        <!-- ▼ 포장/구성품 실사 (9~12) -->
+        <img src="q3-9.jpg" class="answer-img">
+        <div class="answer-img-caption">실제 포장 구성 (1)</div>
+
+        <img src="q3-10.jpg" class="answer-img">
+        <div class="answer-img-caption">실제 포장 구성 (2)</div>
+
+        <img src="q3-11.jpg" class="answer-img">
+        <div class="answer-img-caption">실제 포장 구성 (3)</div>
+
+        <img src="q3-12.jpg" class="answer-img">
+        <div class="answer-img-caption">실제 포장 구성 (4)</div>
+
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="qa-item">
+      <div class="qa-question">
+        Q4. A / S 안내
+        <span class="arrow">▼</span>
+      </div>
+      <div class="qa-answer">
+        배터리 교체와 줄 길이 조절은<br>
+        <strong> 근처 시계방에서 편하게 진행</strong>하실 수 있어요.<br><br>
+
+        A/S 하실 일이 거의 없지만,<br>
+        만일 생긴다면 <strong>전부 제가 해드립니다!</strong><br><br>
+
+        <br><br>
+
+        <img src="q4-1.jpg" alt="q4.jpg" class="answer-img">
+        <div class="answer-img-caption">A/S 관련 예시 사진입니다.</div>
+        -->
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="qa-item">
+      <div class="qa-question">
+        Q5. 방수 안내
+        <span class="arrow">▼</span>
+      </div>
+      <div class="qa-answer">
+
+        <strong>생활방수에 관하여!</strong><br><br>
+
+        기본적인 생활방수의 의미는,<br>
+        <strong>50m 방수 = 50m 물속에서도 가능</strong>이라는 뜻이 절대 아닙니다 🙏<br><br>
+
+        실제 의미는 <strong>3기압(약 3bar)의 수압을 버틴다</strong>는 입니다.<br>
+        보통 3bar는 나와요! 일방 패션시계처럼요 🙏 <br><br>
+
+        ✔ 손 씻을 때 물 튀김 정도 → <strong>가능</strong><br>
+        ❌ 사우나, 샤워기 물줄기, 수도꼭지 직수 → <strong>절대 피해주세요!</strong><br>
+        ❌ 물속에 넣고 흔들기 / 오랜 물속 침수→ <strong>6~10기압까지 올라가 손상 위험!</strong><br><br>
+
+        생활방수 수준만 지켜 주시면 오래 사용 가능하니<br>
+        물 사용 시만 주의해 주시면 됩니다 🙏<br><br>
+
+     
+        <img src="bs-1.jpg" alt="q5.jpg" class="answer-img">
+        <div class="answer-img-caption">생활방수 안내 예시</div>
+        -->
+      </div>
+    </div>
+
+    <!-- Q6 -->
+    <div class="qa-item">
+      <div class="qa-question">
+        Q6. 포장박스가 필요하다면?
+        <span class="arrow">▼</span>
+      </div>
+
+      <div class="qa-answer">
+        <p>
+          <strong> 박스는 필요 시 4만 원에 국내 발송으로 구매 가능</strong>합니다!<br><br>
+          선물용이나 보관용으로 꼭 필요하신 경우에는<br>
+          언제든 추가 구매 가능하니 편하게 문의 주세요 😊
+        </p>
+
+        <!-- 사진 9장 들어가는 자리 (필요 시 사용) -->
+        <div class="img-grid">
+          <!-- 예시: GitHub에 q6-1.jpg ~ q6-9.jpg 업로드 후 아래 주석 해제 -->
+          <!--
+          <img src="q6-1.jpg" class="answer-img">
+          <img src="q6-2.jpg" class="answer-img">
+          <img src="q6-3.jpg" class="answer-img">
+          <img src="q6-4.jpg" class="answer-img">
+          <img src="q6-5.jpg" class="answer-img">
+          <img src="q6-6.jpg" class="answer-img">
+          <img src="q6-7.jpg" class="answer-img">
+          <img src="q6-8.jpg" class="answer-img">
+          <img src="q6-9.jpg" class="answer-img">
+          -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Q7 -->
+    <div class="qa-item">
+      <div class="qa-question">
+        Q7. 구매자 이벤트
+        <span class="arrow">▼</span>
+      </div>
+      <div class="qa-answer">
+        제품 수령 후 <strong>배송 완료 인증샷</strong> 부탁드려요 ❤️❤️<br><br>
+        노출이 부담스러우시면 착샷이 아니어도 괜찮아요.<br>
+        시계만 둔 상태로 촬영해 주셔도 됩니다!<br><br>
+        인증 남겨주신 분들께는 <strong>추가 혜택</strong>을 드리고 있어요 👍<br><br>
+
+        <!-- 구매자 이벤트 관련 사진 넣고 싶다면 사용 -->
+        <!--
+        <img src="q7-1.jpg" class="answer-img">
+        <div class="answer-img-caption">구매자 이벤트 인증 예시</div>
+        -->
+      </div>
+    </div>
+
+    <div class="footer">
+      추가로 궁금하신 점이 있으시면<br>
+      <strong>카카오톡으로 </strong>로 편하게 문의 주세요 :)
+    </div>
+
+  </div>
+
+  <script>
+    document.querySelectorAll(".qa-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        item.classList.toggle("active");
+      });
+    });
+  </script>
+
+</body>
+</html>
