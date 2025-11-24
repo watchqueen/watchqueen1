@@ -7,43 +7,65 @@
   <style>
     :root {
       --gold: #d8c49c;
-      --gold-dark: #b2976a;
-      --text: #3a3a3a;
-      --sub: #777;
-      --bg: #faf8f4;
+      --gold-dark: #b08a45;
+      --gold-soft: #f4e4c7;
+      --text: #333333;
+      --sub: #8a8a8a;
+      --bg: #f2eee7;
       --white: #ffffff;
-      --border: #e6e2db;
+      --border: #e4ddcf;
     }
 
+    /* 전체 배경 & 기본폰트 */
     body {
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
-      background: var(--bg);
+      background: radial-gradient(circle at top, #fdf8ee 0, #f2eee7 45%, #ebe3d6 100%);
       color: var(--text);
-      line-height: 1.6;
+      line-height: 1.65;
     }
 
+    /* 가운데 카드형 컨테이너 */
     .container {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 24px 18px 80px;
+      max-width: 760px;
+      margin: 24px auto 40px;
+      padding: 24px 20px 40px;
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: 22px;
+      box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.08),
+        0 0 0 1px rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(212, 190, 145, 0.35);
+      backdrop-filter: blur(4px);
     }
 
     /* 헤더 영역 */
     .header {
-      padding: 10px 0 24px;
+      padding-bottom: 20px;
       border-bottom: 1px solid var(--border);
       margin-bottom: 18px;
     }
 
     .brand-title {
       font-weight: 700;
-      font-size: 20px;
-      letter-spacing: 1.4px;
+      font-size: 22px;
+      letter-spacing: 1.6px;
       color: var(--gold-dark);
       text-transform: uppercase;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-title::after {
+      content: "";
+      display: block;
+      width: 38px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold-dark));
+      opacity: 0.9;
     }
 
     .page-title {
@@ -56,12 +78,12 @@
     .intro-text {
       font-size: 14px;
       color: var(--sub);
-      line-height: 1.7;
-      background: var(--white);
-      border-radius: 12px;
+      line-height: 1.8;
+      background: linear-gradient(135deg, #ffffff, #fbf4e8);
+      border-radius: 14px;
       border: 1px solid var(--border);
       padding: 12px 14px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.03);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.04);
     }
 
     /* 섹션 제목 */
@@ -69,47 +91,96 @@
       font-size: 14px;
       font-weight: 600;
       margin: 22px 0 10px;
-      color: #444;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-title::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--gold-dark);
     }
 
     /* Q&A 카드 */
     .qa-item {
-      background: var(--white);
-      border: 1px solid var(--border);
-      padding: 16px 14px;
-      border-radius: 14px;
+      background: linear-gradient(135deg, #ffffff, #fbf6ec);
+      border: 1px solid rgba(214, 199, 165, 0.7);
+      padding: 14px 14px 12px;
+      border-radius: 16px;
       margin-bottom: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-      transition: box-shadow 0.25s, transform 0.25s;
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
+      transition: box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
       cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .qa-item::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(255,255,255,0.15), transparent);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      pointer-events: none;
     }
 
     .qa-item:hover {
-      box-shadow: 0 6px 14px rgba(0,0,0,0.07);
-      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.09);
+      transform: translateY(-2px);
+      border-color: rgba(196, 170, 118, 0.95);
+    }
+
+    .qa-item:hover::before {
+      opacity: 1;
     }
 
     .qa-question {
       font-weight: 600;
       font-size: 15px;
-      color: var(--gold-dark);
+      color: #3c3323;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 10px;
+    }
+
+    .q-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #5f4a22;
+      background: rgba(244, 220, 173, 0.55);
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-right: 6px;
     }
 
     .arrow {
-      transition: transform 0.25s ease;
-      font-size: 12px;
+      transition: transform 0.25s ease, background 0.25s ease;
+      font-size: 11px;
       color: var(--sub);
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(166, 140, 92, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.7);
+      flex-shrink: 0;
     }
 
     .qa-item.active .arrow {
       transform: rotate(180deg);
+      background: rgba(216, 196, 156, 0.12);
     }
 
     .qa-answer {
-      margin-top: 12px;
+      margin-top: 10px;
       font-size: 14px;
       color: var(--text);
       display: none;
@@ -125,7 +196,7 @@
 
     /* 링크 스타일 */
     .qa-answer a {
-      color: #336699;
+      color: #345c9b;
       text-decoration: none;
       word-break: break-all;
     }
@@ -134,24 +205,35 @@
       text-decoration: underline;
     }
 
-    /* 이미지 2열 그리드 */
+    /* 이미지 2열 그리드 (Q3, Q6) */
     .img-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
-      margin: 10px 0 14px;
+      margin: 12px 0 10px;
+    }
+
+    /* 가운데 한 장짜리 (Q4, Q5, Q7) */
+    .img-center {
+      display: flex;
+      justify-content: center;
+      margin: 14px 0 8px;
     }
 
     .answer-img {
       width: 100%;
       display: block;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+      border-radius: 12px;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    .img-center .answer-img {
+      max-width: 360px;
     }
 
     .footer {
       text-align: center;
-      margin-top: 34px;
+      margin-top: 28px;
       font-size: 13px;
       color: var(--sub);
     }
@@ -160,12 +242,20 @@
       color: var(--gold-dark);
     }
 
-    @media (max-width: 500px) {
-      .brand-title { font-size: 18px; }
+    @media (max-width: 540px) {
+      .container {
+        margin: 12px 10px 26px;
+        padding: 18px 14px 26px;
+        border-radius: 18px;
+      }
+      .brand-title { font-size: 19px; }
       .page-title { font-size: 16px; }
       .intro-text { font-size: 13.5px; }
       .qa-question { font-size: 14px; }
       .qa-answer { font-size: 13.5px; }
+      .img-center .answer-img {
+        max-width: 100%;
+      }
     }
   </style>
 </head>
@@ -189,7 +279,7 @@
     <!-- Q1 -->
     <div class="qa-item">
       <div class="qa-question">
-        Q1. 구매자 전용 사이트 안내
+        <div><span class="q-label">GUIDE 01</span>Q1. 구매자 전용 사이트 안내</div>
         <span class="arrow">▼</span>
       </div>
       <div class="qa-answer">
@@ -235,7 +325,7 @@
     <!-- Q2 -->
     <div class="qa-item">
       <div class="qa-question">
-        Q2. 배송 기간 안내
+        <div><span class="q-label">GUIDE 02</span>Q2. 배송 기간 안내</div>
         <span class="arrow">▼</span>
       </div>
       <div class="qa-answer">
@@ -248,27 +338,27 @@
     <!-- Q3 -->
     <div class="qa-item">
       <div class="qa-question">
-        Q3. 시계 박스에 관하여
+        <div><span class="q-label">GUIDE 03</span>Q3. 시계 박스에 관하여</div>
         <span class="arrow">▼</span>
       </div>
       <div class="qa-answer">
 
         시계 박스는 처음부터 시계랑 같이 포장돼서 완벽하게 나오는 게 아니라,<br>
-        이렇게 중국 시장에 깔아 놓고 파는 것을, 별도로 사다가<br>
+        이렇게 중국 시장에 깔아 놓고 파는 걸 별도로 사다가<br>
         <strong>풀 구성인 척</strong> 셀러들이 5~10만 원은 더 받고 있습니다 🤣<br><br>
 
-        실상은 <strong>원가 15,000원</strong>에 무거운 이유로 배송비가 25,000원 나와
-        <strong>총 4만 원에 추가구매 가능한 상황입니다.<br><br>
+        하지만 실상은 <strong>원가 15,000원</strong>에 무거운 이유로 배송비가 25,000원 나와<br>
+        <strong>총 4만 원에 추가구매 가능한 상황</strong>이에요.<br><br>
 
         필요하시다면 추가 구매 가능하십니다만,<br>
-        <strong>굳이 돈 주고 살 만한 퀄리티는 아닙니다</strong><br><br>
+        <strong>굳이 돈 주고 살 만한 퀄리티는 아닙니다 🙏</strong><br><br>
 
-        제가 전부 만져본 결과,<br>
+        제 개인적인 의견을 더하자면,<br>
         쉽게 손상되기에 <strong>비싼 쓰레기를 돈 주고 사는 느낌</strong>이라<br>
-        굳이 필요 없으시면 안 사셔도 괜찮습니다.<br><br>
+        굳이 필요 없으시면 안 사셔도 전혀 괜찮습니다.<br><br>
 
-        다만 선물용이시거나 박스 보관을 깔끔하게 하고 싶으신 경우 등<br>
-        필요하실 때는, 추가 구매 가능하시니 편하게 말씀 주세요 🙏<br><br>
+        다만 선물용이시거나 박스 보관을 깔끔하게 하고 싶으신 경우에는<br>
+        필요하실 때 추가 구매 가능하시니 편하게 말씀 주세요 🙏<br><br>
 
         <!-- 시계 박스 실사 (1~8) -->
         <div class="img-grid">
@@ -283,10 +373,10 @@
         </div>
 
         저는 마진 없이 <strong>그대로 구매대행</strong>해서 보내드리는 거라,<br>
-        내구성이나 완성도 때문에 오히려 욕먹을 때도 있습니다 😭<br><br>
+        내구성이나 완성도 때문에 오히려 욕먹을 때도 있어요 😭<br><br>
 
-        시계 포장은 저희가 <strong>완벽하게 안전하게</strong> 해서 보내드리니<br>
-        박스가 없어도 걱정하지 않으셔도 됩니다!<br><br>
+        하지만 시계 본품 포장은 저희가 <strong>완벽하게 안전하게</strong> 해서 보내드리니<br>
+        박스가 없어도 전혀 걱정하지 않으셔도 됩니다!<br><br>
 
         <!-- 포장/구성품 실사 (9~12) -->
         <div class="img-grid">
@@ -302,17 +392,17 @@
     <!-- Q4 -->
     <div class="qa-item">
       <div class="qa-question">
-        Q4. A / S 안내
+        <div><span class="q-label">GUIDE 04</span>Q4. A / S 안내</div>
         <span class="arrow">▼</span>
       </div>
       <div class="qa-answer">
         배터리 교체와 줄 길이 조절은<br>
-        근처 시계방에서 편하게 하실 수 있어요.<br><br>
+        <strong>근처 시계방에서 편하게 진행</strong>하실 수 있어요.<br><br>
 
         A/S 하실 일이 거의 없지만,<br>
-        만일 생긴다면 전부 제가 해드립니다!<br><br>
+        만일 생긴다면 <strong>전부 제가 해드립니다!</strong><br><br>
 
-        <div class="img-grid">
+        <div class="img-center">
           <img src="q4-1.jpg" alt="A/S 안내" class="answer-img">
         </div>
       </div>
@@ -321,7 +411,7 @@
     <!-- Q5 -->
     <div class="qa-item">
       <div class="qa-question">
-        Q5. 방수 안내
+        <div><span class="q-label">GUIDE 05</span>Q5. 방수 안내</div>
         <span class="arrow">▼</span>
       </div>
       <div class="qa-answer">
@@ -329,19 +419,19 @@
         <strong>생활방수에 관하여!</strong><br><br>
 
         기본적인 생활방수의 의미는,<br>
-        <strong>50m 방수 = 50m 물속에서도 가능</strong>이라는 뜻이 아닙니다<br><br>
+        <strong>50m 방수 = 50m 물속에서도 가능</strong>이라는 뜻이 절대 아닙니다 🙏<br><br>
 
         실제 의미는 <strong>3기압(약 3bar)의 수압을 버틴다</strong>는 것입니다.<br>
         보통 3bar는 나와요! 일반 패션시계처럼요 🙏<br><br>
 
         ✔ 손 씻을 때 물 튀김 정도 → <strong>가능</strong><br>
-        ✔ 사우나, 샤워기 물줄기, 수도꼭지 직수 → <strong>불가능</strong><br>
-        ✔ 물속에 넣고 흔들기 / 오랜 물속 침수 → <strong>6~10기압까지 올라가 손상 위험!</strong><br><br>
+        ❌ 사우나, 샤워기 물줄기, 수도꼭지 직수 → <strong>절대 피해주세요!</strong><br>
+        ❌ 물속에 넣고 흔들기 / 오랜 물속 침수 → <strong>6~10기압까지 올라가 손상 위험!</strong><br><br>
 
         생활방수 수준만 지켜 주시면 오래 사용 가능하니<br>
-        물 사용 시만 주의해 주시면 됩니다<br><br>
+        물 사용 시만 주의해 주시면 됩니다 🙏<br><br>
 
-        <div class="img-grid">
+        <div class="img-center">
           <img src="bs-1.jpg" alt="방수 안내" class="answer-img">
         </div>
       </div>
@@ -350,7 +440,7 @@
     <!-- Q6 -->
     <div class="qa-item">
       <div class="qa-question">
-        Q6. 포장박스가 필요하다면?
+        <div><span class="q-label">GUIDE 06</span>Q6. 포장박스가 필요하다면?</div>
         <span class="arrow">▼</span>
       </div>
 
@@ -378,16 +468,16 @@
     <!-- Q7 -->
     <div class="qa-item">
       <div class="qa-question">
-        Q7. 구매자 이벤트
+        <div><span class="q-label">GUIDE 07</span>Q7. 구매자 이벤트</div>
         <span class="arrow">▼</span>
       </div>
       <div class="qa-answer">
         제품 수령 후 <strong>배송 완료 인증샷</strong> 부탁드려요 ❤️❤️<br><br>
         노출이 부담스러우시면 착샷이 아니어도 괜찮아요.<br>
         시계만 둔 상태로 촬영해 주셔도 됩니다!<br><br>
-        인증 남겨주신 분들께는 <strong>추가 혜택</strong> 드립니다👍<br><br>
+        인증 남겨주신 분들께는 <strong>추가 혜택</strong>을 드리고 있어요 👍<br><br>
 
-        <div class="img-grid">
+        <div class="img-center">
           <img src="q7-1.jpg" class="answer-img">
         </div>
       </div>
