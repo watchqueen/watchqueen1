@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0f14">
+<title>스윙 리플레이 (3폰)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+<style>
+:root{--bg:#0b0f14;--fg:#e8edf2;--mut:#8b98a5;--acc:#3ddc84;--warn:#ffb020;--bad:#ff5a5a;--pan:#151b23}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,"Noto Sans KR",sans-serif;overflow:hidden}
+button{font:inherit;color:var(--fg);background:#232c37;border:1px solid #334155;border-radius:10px;padding:10px 14px}
+button.pri{background:var(--acc);color:#04210f;border-color:var(--acc);font-weight:700}
+button.sm{padding:6px 10px;font-size:13px;border-radius:8px}
+button.cur{background:var(--acc);color:#04210f;border-color:var(--acc)}
+button:disabled{opacity:.4}
+select,input[type=text]{font:inherit;color:var(--fg);background:#0f141b;border:1px solid #334155;border-radius:10px;padding:10px 12px}
+input[type=range]{flex:1;min-width:100px}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column}
+[hidden]{display:none!important}
+#setup{padding:max(18px,env(safe-area-inset-top)) 18px 24px;gap:14px;overflow:auto}
+#setup h1{font-size:22px;margin:0}
+.card{background:var(--pan);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row label{color:var(--mut);min-width:84px}
+.roles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.roles button{padding:18px 6px;font-size:16px;font-weight:700}
+.hint{color:var(--mut);font-size:13px}
+#cam{background:#000}
+#camVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .3s}
+#roi{position:absolute;inset:0;width:100%;height:100%;touch-action:none;z-index:2}
+.bar{position:absolute;left:0;right:0;display:flex;gap:8px;align-items:center;padding:8px 10px;background:rgba(8,12,18,.72);backdrop-filter:blur(6px);flex-wrap:wrap;z-index:5}
+.bar.top{top:0;padding-top:max(8px,env(safe-area-inset-top))}.bar.bot{bottom:0;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--bad);display:inline-block;flex:none}
+.dot.ok{background:var(--acc)}.dot.wait{background:var(--warn)}
+.meter{height:10px;background:#1f2937;border-radius:5px;overflow:hidden;flex:1;min-width:60px;position:relative}
+.meter i{display:block;height:100%;background:var(--acc);width:0}
+.meter b{position:absolute;top:0;bottom:0;width:2px;background:#fff;left:0}
+#log{position:absolute;left:8px;right:8px;bottom:64px;max-height:36vh;overflow:auto;font:12px/1.35 ui-monospace,monospace;color:#cbd5e1;background:rgba(0,0,0,.6);padding:8px;border-radius:8px;z-index:4;white-space:pre-wrap}
+.big{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800;color:var(--acc);text-shadow:0 2px 12px #000;pointer-events:none;opacity:0;transition:opacity .2s;z-index:6}
+.big.show{opacity:1}
+#sens{position:absolute;left:10px;right:10px;bottom:64px;z-index:7}
+#mon{background:#000}
+#stage{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:4px;min-height:0;position:relative}
+#stage video{flex:1;min-width:0;max-height:100%;height:100%;object-fit:contain;background:#05080c;border-radius:6px}
+#empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--mut);gap:8px;text-align:center;padding:20px;pointer-events:none}
+#monTop,#monBot{display:flex;gap:8px;align-items:center;padding:8px 10px;background:var(--pan);flex-wrap:wrap}
+#monTop{padding-top:max(8px,env(safe-area-inset-top))}
+#monBot{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+#hist{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0}
+#hist button{white-space:nowrap}
+#hist button.cur{border-color:var(--acc)}
+.tag{font-size:12px;color:var(--mut)}
+.badge{background:#1f2937;border-radius:999px;padding:3px 10px;font-size:13px;white-space:nowrap}
+.badge.ok{background:#14532d;color:#bbf7d0}
+#monLog{font:12px ui-monospace,monospace;color:var(--mut);max-height:22vh;overflow:auto;padding:4px 10px;white-space:pre-wrap;background:#0f141b}
+.spd{display:flex;gap:4px}
+</style>
+</head>
+<body>
+
+<!-- ============ 설정 ============ -->
+<div id="setup" class="screen">
+  <h1>⛳ 스윙 리플레이 (3폰)</h1>
+  <div class="card">
+    <div class="row"><label>방 코드</label><input id="room" type="text" maxlength="8" style="width:120px;text-transform:uppercase"><span class="hint">세 폰 모두 같은 코드</span></div>
+    <div class="hint">① 갤럭시 한 대 핫스팟 ON → 나머지 두 대 연결<br>② 세 폰 모두 이 페이지를 <b>크롬</b>으로 열기<br>③ <b>모니터 → 측면 → 정면</b> 순서로 시작 (처음 접속 때만 인터넷 필요)</div>
+  </div>
+  <div class="card">
+    <div class="row"><label>해상도</label><select id="res">
+      <option value="1920x1080x60">1080p 60fps (권장)</option>
+      <option value="1920x1080x30">1080p 30fps</option>
+      <option value="3840x2160x30">4K 30fps</option>
+      <option value="1280x720x60">720p 60fps</option></select></div>
+    <div class="row"><label>비트레이트</label><select id="br">
+      <option value="16">16 Mbps (권장)</option><option value="24">24 Mbps</option><option value="12">12 Mbps</option><option value="8">8 Mbps</option></select></div>
+    <div class="row"><label>소리 확인</label><select id="snd">
+      <option value="1">켜기 (움직임 + 소리 둘 다)</option><option value="0">끄기 (움직임만)</option></select><span class="hint">측면 카메라만 해당</span></div>
+  </div>
+  <div class="card">
+    <div class="hint">역할 선택 (누르면 바로 시작)</div>
+    <div class="roles">
+      <button data-role="mon">📺<br>모니터</button>
+      <button data-role="side">📷<br>측면 카메라</button>
+      <button data-role="front">📷<br>정면 카메라</button>
+    </div>
+    <div class="hint">카메라 폰은 <b>세로</b>로 세워두는 걸 권장 (몸+클럽 전체). 측면 카메라가 스윙을 감지해 정면에도 신호를 보냅니다. 모니터는 가로/세로 무관.</div>
+  </div>
+  <div id="support" class="hint"></div>
+</div>
+
+<!-- ============ 카메라 ============ -->
+<div id="cam" class="screen" hidden>
+  <video id="camVideo" autoplay muted playsinline></video>
+  <canvas id="roi"></canvas>
+  <div class="big" id="flash">스윙!</div>
+  <div class="bar top">
+    <span class="dot" id="camDot"></span><b id="camRole"></b><span class="tag" id="camInfo"></span>
+    <span class="badge" id="camCount">0회</span>
+  </div>
+  <div id="log"></div>
+  <div id="sens" class="card" hidden>
+    <div class="row"><label>움직임 임계</label><input type="range" id="mthr" min="5" max="70" step="1"><span id="mthrV"></span></div>
+    <div class="row"><label>소리 임계</label><input type="range" id="sthr" min="0.05" max="0.95" step="0.05"><span id="sthrV"></span></div>
+    <div class="row"><label>소리 확인</label><select id="snd2"><option value="1">켜기</option><option value="0">끄기</option></select></div>
+    <div class="hint">네모(감지 영역)는 임팩트 직후 클럽이 지나가는 <b>공 앞쪽(목표 방향) 빈 공간</b>에 작게 두세요. 어드레스·백스윙 중에는 네모 안에 아무것도 없어야 합니다. 초록 막대가 흰 선을 넘으면 감지. 소리 막대는 본인 임팩트 때만 흰 선을 넘도록 조절.</div>
+  </div>
+  <div class="bar bot">
+    <div class="meter" id="mMeter"><i></i><b></b></div>
+    <div class="meter" id="sMeter"><i></i><b></b></div>
+    <button class="sm" id="btnRoi">영역 설정</button>
+    <button class="sm" id="btnSens">민감도</button>
+    <button class="sm" id="btnDim">어둡게</button>
+    <button class="sm" id="btnLog">로그</button>
+    <button class="sm" id="btnManual">수동 촬영</button>
+  </div>
+</div>
+
+<!-- ============ 모니터 ============ -->
+<div id="mon" class="screen" hidden>
+  <div id="monTop">
+    <span class="dot" id="monDot"></span><b id="monId"></b>
+    <span class="badge" id="stSide">측면 ✗</span><span class="badge" id="stFront">정면 ✗</span>
+    <span class="badge" id="monCount">0회</span>
+    <span class="tag" id="monStatus" style="flex:1;min-width:120px"></span>
+    <button class="sm" id="btnMonManual">수동 촬영</button>
+    <button class="sm" id="btnMonLog">로그</button>
+  </div>
+  <div id="monLog" hidden></div>
+  <div id="stage">
+    <video id="vFront" playsinline muted hidden></video>
+    <video id="vSide" playsinline hidden></video>
+    <div id="empty"><div style="font-size:40px">⛳</div><div>카메라가 연결되고 스윙하면<br>여기에 정면 · 측면 리플레이가 뜹니다</div><div class="hint" id="emptyHint"></div></div>
+  </div>
+  <div id="monBot">
+    <button id="btnPlay">⏸</button>
+    <span class="spd"><button class="sm cur" data-r="1">1x</button><button class="sm" data-r="0.5">½x</button><button class="sm" data-r="0.25">¼x</button></span>
+    <button class="sm" id="btnPrev">◀ 1프레임</button><button class="sm" id="btnNext">1프레임 ▶</button>
+    <button class="sm" id="btnSyncM">정면 −1f</button><button class="sm" id="btnSyncP">정면 +1f</button>
+    <button class="sm" id="btnSave">💾 저장</button>
+    <div id="hist"></div>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const LS=window.localStorage, now=()=>performance.now();
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const PRE=3.0, POST=2.0;            // 임팩트 전/후 (초)
+const SEG=6000, MIN_OTHER=3500;     // 녹화기 교대 주기 / 상대 녹화기 최소 나이 (ms)
+const LOCKOUT=6000;                 // 스윙 감지 후 재감지 금지 (ms)
+let role=null, room=null, peer=null;
+const monIdOf=()=>'gswing-'+room+'-mon';
+
+/* ---------- 로그 ---------- */
+const logEl=$('#log'), monLogEl=$('#monLog');
+function log(...a){
+  const line=new Date().toTimeString().slice(0,8)+' '+a.map(x=>typeof x==='object'?JSON.stringify(x):String(x)).join(' ');
+  console.log(line);
+  const el=role==='mon'?monLogEl:logEl; if(!el) return;
+  el.textContent=(el.textContent+'\n'+line).split('\n').slice(-80).join('\n'); el.scrollTop=1e9;
+}
+window.addEventListener('error',e=>log('ERR',e.message));
+window.addEventListener('unhandledrejection',e=>log('REJ',(e.reason&&e.reason.message)||e.reason));
+function setDot(id,cls){ $('#'+id).className='dot '+(cls||''); }
+
+/* ---------- 설정 화면 ---------- */
+const roomIn=$('#room');
+roomIn.value=LS.gq_room||String(Math.floor(1000+Math.random()*9000));
+['res','br','snd'].forEach(k=>{ if(LS['gq_'+k]) $('#'+k).value=LS['gq_'+k]; $('#'+k).onchange=e=>LS['gq_'+k]=e.target.value; });
+function pickMime(){
+  if(!window.MediaRecorder) return null;
+  const c=['video/webm;codecs=h264,opus','video/webm;codecs=h264',
+           'video/mp4;codecs="avc1.42E01E,mp4a.40.2"','video/mp4;codecs=avc1,opus','video/mp4;codecs=avc1','video/mp4',
+           'video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  return c.find(t=>MediaRecorder.isTypeSupported(t))||null;
+}
+(function support(){
+  const s=[];
+  if(!window.Peer) s.push('⚠ PeerJS 로드 실패 (인터넷 확인 후 새로고침)');
+  if(!navigator.mediaDevices) s.push('⚠ 카메라 API 없음 (HTTPS 필요)');
+  if(!window.MediaRecorder) s.push('⚠ MediaRecorder 없음');
+  const m=pickMime(); s.push('녹화 코덱: '+(m||'없음'));
+  $('#support').textContent=s.join(' · ');
+})();
+$$('.roles button').forEach(b=>b.onclick=()=>start(b.dataset.role));
+
+async function start(r){
+  role=r; room=(roomIn.value.trim().toUpperCase()||'0000').replace(/[^A-Z0-9]/g,'')||'0000'; LS.gq_room=room;
+  if(!window.Peer){ $('#support').textContent='⚠ PeerJS 로드 실패 — 인터넷 연결 후 새로고침'; return; }
+  $('#setup').hidden=true;
+  wakeLock();
+  if(r==='mon') startMonitor(); else await startCamera();
+}
+let wl=null;
+async function wakeLock(){
+  if(!('wakeLock' in navigator)) return;
+  const req=async()=>{ try{ wl=await navigator.wakeLock.request('screen'); }catch(e){} };
+  await req();
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') req(); });
+}
+
+/* =====================================================================
+   카메라
+   ===================================================================== */
+let stream=null, mime=null, bitrate=16e6, camVideo=$('#camVideo'), recs=[null,null], swingSeq=0, camConn=null, dim=false;
+const pending=[];
+
+async function startCamera(){
+  $('#cam').hidden=false; $('#camRole').textContent=role==='side'?'측면':'정면';
+  const [w,h,fps]=$('#res').value.split('x').map(Number); bitrate=Number($('#br').value)*1e6;
+  soundConfirm=($('#snd').value==='1');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:w},height:{ideal:h},frameRate:{ideal:fps}},
+      audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  }catch(e){ log('카메라 실패',e.name,e.message); $('#camInfo').textContent='카메라 권한/실행 실패: '+e.message; return; }
+  camVideo.srcObject=stream; camVideo.play().catch(()=>{});
+  const vt=stream.getVideoTracks()[0], st=vt.getSettings();
+  mime=pickMime(); if(!mime){ $('#camInfo').textContent='녹화 코덱 없음'; return; }
+  const codec=/h264|avc1/.test(mime)?'H264':/vp9/.test(mime)?'VP9':/vp8/.test(mime)?'VP8':'?';
+  $('#camInfo').textContent=`${st.width}×${st.height} ${Math.round(st.frameRate||0)}fps · ${codec} ${bitrate/1e6}M`;
+  log('카메라',st.width+'x'+st.height,st.frameRate+'fps',mime);
+  if(codec!=='H264') log('주의: 하드웨어 H264 아님 — 발열/프레임 저하 시 1080p30으로');
+  vt.onended=()=>{ log('카메라 트랙 종료'); setDot('camDot','bad'); };
+  startRecorders();
+  setupRoiCanvas();
+  if(role==='side') startDetector();
+  connectCamPeer();
+  $('#btnManual').onclick=()=>manualTrigger();
+  $('#btnDim').onclick=()=>{ dim=!dim; camVideo.style.opacity=dim?0.25:1; $('#btnDim').textContent=dim?'밝게':'어둡게'; };
+  $('#btnLog').onclick=()=>{ logEl.style.display=logEl.style.display==='none'?'block':'none'; };
+}
+
+/* ---- 2중 녹화기 (항상 한 녹화기는 3초 이상 녹화 중) ---- */
+function newRec(i){
+  let mr;
+  try{ mr=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:bitrate,audioBitsPerSecond:128000}); }
+  catch(e){ log('Recorder 생성 실패',e.message); return null; }
+  const r={mr,start:0,chunks:[],cap:null,i};
+  mr.ondataavailable=e=>{ if(e.data&&e.data.size) r.chunks.push(e.data); };
+  mr.onerror=e=>log('녹화 오류',(e.error&&e.error.name)||'');
+  mr.onstop=()=>{
+    if(r.cap){ const blob=new Blob(r.chunks,{type:mime}); r.chunks=[]; queueClip(blob,r.cap); }
+    else r.chunks=[];
+  };
+  try{ mr.start(); }catch(e){ log('start 실패',e.message); return null; }
+  r.start=now(); recs[i]=r; return r;
+}
+const age=r=>r?now()-r.start:0;
+function rotate(i){ const old=recs[i]; const n=newRec(i); if(old&&old.mr.state!=='inactive') old.mr.stop(); return n; }
+function startRecorders(){
+  newRec(0); setTimeout(()=>newRec(1),3000);
+  setInterval(()=>{
+    for(let i=0;i<2;i++){
+      const r=recs[i], o=recs[1-i]; if(!r||!o) continue;
+      if(r.mr.state!=='recording'){ log('rec'+i+' 상태 '+r.mr.state+' → 재시작'); newRec(i); continue; }
+      if(!r.cap&&!o.cap&&age(r)>=SEG&&age(o)>=MIN_OTHER) rotate(i);
+    }
+  },250);
+}
+/* 임팩트 시각(performance.now 기준)으로 클립 캡처 */
+function capture(swingId,impactT){
+  const cands=recs.filter(r=>r&&!r.cap&&r.mr.state==='recording').sort((a,b)=>a.start-b.start);
+  if(!cands.length){ log('녹화기 없음 — 캡처 실패'); return; }
+  const r=cands[0], off=(impactT-r.start)/1000;
+  r.cap={swingId,impactOffset:off};
+  log(`캡처 rec${r.i} (녹화기 나이 ${recs.map(x=>x?(age(x)/1000).toFixed(1)+'s'+(x.cap?'*':''):'-').join('/')})`);
+  if(off<PRE) log(`주의: 임팩트 전 영상 ${off.toFixed(1)}초만 확보`);
+  swingSeq++; $('#camCount').textContent=swingSeq+'회'; flash();
+  setTimeout(()=>rotate(r.i),Math.max(50,impactT+POST*1000-now()));
+}
+function flash(){ const f=$('#flash'); f.classList.add('show'); setTimeout(()=>f.classList.remove('show'),700); }
+
+/* ---- 클립 전송 (64KB 조각, 백프레셔) ---- */
+function queueClip(blob,cap){ pending.push({blob,cap}); while(pending.length>3) pending.shift(); flushPending(); }
+let sending=false;
+async function flushPending(){
+  if(sending) return; sending=true;
+  try{
+    while(pending.length&&camConn&&camConn.open){ await sendOne(pending[0]); pending.shift(); }
+  }catch(e){ log('전송 실패',e.message); }
+  sending=false;
+}
+async function sendOne(it){
+  const c=camConn, buf=await it.blob.arrayBuffer(), CH=64*1024, dc=c.dataChannel;
+  c.send(JSON.stringify({type:'clip',role,swingId:it.cap.swingId,mime,size:buf.byteLength,impactOffset:it.cap.impactOffset,pre:PRE,post:POST}));
+  log(`클립 전송 ${(buf.byteLength/1e6).toFixed(1)}MB`);
+  const t0=now();
+  for(let o=0;o<buf.byteLength;o+=CH){
+    while(dc.bufferedAmount>2*1024*1024){ await sleep(8); if(!c.open) throw new Error('연결 끊김'); }
+    c.send(buf.slice(o,o+CH));
+  }
+  c.send(JSON.stringify({type:'clip-end',role,swingId:it.cap.swingId}));
+  log(`전송 완료 ${((now()-t0)/1000).toFixed(1)}s`);
+}
+
+/* ---- 모니터와 연결 (자동 재접속) ---- */
+let dialTimer=null, pingTimer=null, lastPong=0;
+function connectCamPeer(){
+  if(peer){ try{peer.destroy();}catch(e){} }
+  peer=new Peer({debug:1});
+  peer.on('open',id=>{ log('피어 준비',id); dial(); });
+  peer.on('error',e=>{
+    log('피어 오류',e.type);
+    if(e.type==='peer-unavailable'){
+      setDot('camDot','wait');
+      if(camConn&&!camConn.open){ const c=camConn; camConn=null; try{c.close();}catch(x){} }
+      schedDial(3000);
+    }
+    else if(['network','server-error','socket-error','socket-closed','browser-incompatible'].includes(e.type)) setTimeout(connectCamPeer,4000);
+  });
+  peer.on('disconnected',()=>{ log('시그널 서버 끊김 → 재연결'); setTimeout(()=>{ try{ if(peer&&!peer.destroyed) peer.reconnect(); }catch(e){ connectCamPeer(); } },1500); });
+}
+function schedDial(ms){ clearTimeout(dialTimer); dialTimer=setTimeout(dial,ms); }
+function dial(){
+  if(!peer||peer.destroyed) return;
+  if(peer.disconnected){ schedDial(2000); return; }
+  if(camConn&&camConn.open) return;
+  setDot('camDot','wait'); log('모니터 연결 시도',monIdOf());
+  let c; try{ c=peer.connect(monIdOf(),{serialization:'raw',reliable:true}); }catch(e){ log('connect 예외',e.message); }
+  if(!c){ schedDial(3000); return; }
+  camConn=c;
+  const to=setTimeout(()=>{ if(!c.open){ log('연결 시간초과'); try{c.close();}catch(e){} if(camConn===c) camConn=null; schedDial(1000); } },10000);
+  c.on('open',()=>{
+    clearTimeout(to); setDot('camDot','ok'); log('모니터 연결됨');
+    try{ c.dataChannel.binaryType='arraybuffer'; }catch(e){}
+    c.send(JSON.stringify({type:'hello',role}));
+    lastPong=now(); clearInterval(pingTimer);
+    pingTimer=setInterval(()=>{
+      if(!c.open) return;
+      try{ c.send(JSON.stringify({type:'ping'})); }catch(e){}
+      if(now()-lastPong>12000){ log('응답 없음 → 재연결'); try{c.close();}catch(e){} }
+    },3000);
+    flushPending();
+  });
+  c.on('data',d=>{
+    if(typeof d!=='string') return; let m; try{m=JSON.parse(d);}catch(e){return;}
+    if(m.type==='pong') lastPong=now();
+    else if(m.type==='trigger'){
+      if(role==='front'){ capture(m.swingId,now()-(m.lat||100)); log('트리거 수신',m.swingId); }
+      else if(m.manual) triggerSwing('manual');
+    }
+  });
+  c.on('close',()=>{ clearTimeout(to); clearInterval(pingTimer); setDot('camDot','bad'); log('모니터 연결 끊김'); if(camConn===c) camConn=null; schedDial(1500); });
+  c.on('error',e=>log('연결 오류',e.type||e.message));
+}
+
+/* ---- 스윙 감지 (측면): 감지영역 움직임 스파이크 + (선택) 임팩트 소리 ---- */
+const det={thr:+(LS.gq_mthr||25), sthr:+(LS.gq_sthr||0.35), roi:null, prev:null, lastTrig:-1e9, ring:[], lastIgnoreLog:0};
+try{ det.roi=JSON.parse(LS.gq_roi||'null'); }catch(e){}
+if(!det.roi) det.roi={x:0.42,y:0.62,w:0.16,h:0.12};
+let soundConfirm=true;
+const dcv=document.createElement('canvas'), dctx=dcv.getContext('2d',{willReadFrequently:true});
+const audioPeaks=[];
+
+function startDetector(){
+  /* 소리 */
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext, ac=new AC();
+    const src=ac.createMediaStreamSource(stream), an=ac.createAnalyser(); an.fftSize=512; src.connect(an);
+    const buf=new Float32Array(an.fftSize), sm=$('#sMeter');
+    const tickA=()=>{
+      an.getFloatTimeDomainData(buf); let p=0; for(let i=0;i<buf.length;i++){ const a=Math.abs(buf[i]); if(a>p)p=a; }
+      const t=now(); audioPeaks.push({t,p}); while(audioPeaks.length&&t-audioPeaks[0].t>1500) audioPeaks.shift();
+      sm.firstElementChild.style.width=(p*100)+'%'; sm.lastElementChild.style.left=(det.sthr*100)+'%';
+      requestAnimationFrame(tickA);
+    };
+    tickA(); ac.resume().catch(()=>{});
+  }catch(e){ log('오디오 분석 불가 → 소리 확인 끔',e.message); soundConfirm=false; $('#snd2').value='0'; }
+
+  /* 영상 */
+  const W=320, mm=$('#mMeter');
+  const tickV=()=>{
+    const vw=camVideo.videoWidth, vh=camVideo.videoHeight;
+    if(!vw||!vh){ camVideo.requestVideoFrameCallback(tickV); return; }
+    const H=Math.round(W*vh/vw);
+    if(dcv.width!==W||dcv.height!==H){ dcv.width=W; dcv.height=H; det.prev=null; }
+    const r=det.roi, rx=Math.round(r.x*W), ry=Math.round(r.y*H), rw=Math.max(4,Math.round(r.w*W)), rh=Math.max(4,Math.round(r.h*H));
+    dctx.drawImage(camVideo,0,0,W,H);
+    const d=dctx.getImageData(rx,ry,rw,rh).data, n=rw*rh, g=new Uint8Array(n);
+    for(let i=0,j=0;i<n;i++,j+=4) g[i]=(d[j]*3+d[j+1]*6+d[j+2])/10|0;
+    let pct=0;
+    if(det.prev&&det.prev.length===n){ let c=0; for(let i=0;i<n;i++){ if(Math.abs(g[i]-det.prev[i])>28) c++; } pct=c/n*100; }
+    det.prev=g;
+    mm.firstElementChild.style.width=Math.min(100,pct)+'%'; mm.lastElementChild.style.left=det.thr+'%';
+    const t=now();
+    if(pct>=det.thr&&t-det.lastTrig>LOCKOUT){
+      const before=det.ring.slice(0,-2);                     // 직전 2프레임 제외, 그 이전 ~0.3초가 정지였는지
+      const wasQuiet=before.length>=6&&before.every(v=>v<det.thr*0.4);
+      if(wasQuiet) onMotionSpike(t,pct);
+      else if(t-det.lastIgnoreLog>2000){ det.lastIgnoreLog=t; log(`움직임 ${pct.toFixed(0)}% 무시 (직전에 정지 아님)`); }
+    }
+    det.ring.push(pct); if(det.ring.length>20) det.ring.shift();
+    camVideo.requestVideoFrameCallback(tickV);
+  };
+  camVideo.requestVideoFrameCallback(tickV);
+}
+function onMotionSpike(t,pct){
+  det.lastTrig=t;
+  setTimeout(()=>{
+    /* 클럽은 1~3프레임만 지나가고 사라짐. 손(공 놓기)·사람은 계속 움직임 → 무시 */
+    const busy=det.ring.slice(-12).filter(v=>v>=det.thr*0.4).length;
+    if(busy>=10){ log(`움직임 ${pct.toFixed(0)}% 감지, 지속 움직임(손/사람, ${busy}/12) → 무시`); det.lastTrig=t-LOCKOUT+1500; return; }
+    if(!soundConfirm){ triggerSwing('움직임',t); return; }
+    const hit=audioPeaks.some(a=>Math.abs(a.t-t)<=300&&a.p>=det.sthr);
+    if(hit) triggerSwing('움직임+소리',t);
+    else { log(`움직임 ${pct.toFixed(0)}% 감지, 소리 없음 → 무시`); det.lastTrig=t-LOCKOUT+1500; }
+  },320);
+}
+function triggerSwing(src,t){
+  if(t===undefined) t=now();
+  const swingId=room+'-'+Date.now().toString(36);
+  log('스윙 감지('+src+')',swingId);
+  capture(swingId,t);
+  if(camConn&&camConn.open) camConn.send(JSON.stringify({type:'trigger',swingId,src}));
+  else log('모니터 미연결 — 정면 트리거 못 보냄');
+}
+function manualTrigger(){ if(role==='side') triggerSwing('수동'); else capture('M'+Date.now().toString(36),now()); }
+
+/* ---- 감지영역 그리기/편집 + 민감도 패널 ---- */
+let roiMode=false, drag=null;
+function setupRoiCanvas(){
+  const cv=$('#roi');
+  if(role!=='side'){ cv.hidden=true; ['btnRoi','btnSens','mMeter','sMeter'].forEach(id=>$('#'+id).hidden=true); return; }
+  const ctx=cv.getContext('2d');
+  cv.style.pointerEvents='none';
+  const videoRect=()=>{ const vw=camVideo.videoWidth||9, vh=camVideo.videoHeight||16, cw=cv.clientWidth, ch=cv.clientHeight; const s=Math.min(cw/vw,ch/vh), w=vw*s, h=vh*s; return {x:(cw-w)/2,y:(ch-h)/2,w,h}; };
+  const draw=()=>{
+    const dpr=devicePixelRatio||1, cw=cv.clientWidth, ch=cv.clientHeight;
+    if(cv.width!==Math.round(cw*dpr)||cv.height!==Math.round(ch*dpr)){ cv.width=Math.round(cw*dpr); cv.height=Math.round(ch*dpr); }
+    ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,cw,ch);
+    const R=videoRect(), r=det.roi, x=R.x+r.x*R.w, y=R.y+r.y*R.h, w=r.w*R.w, h=r.h*R.h;
+    ctx.lineWidth=2; ctx.strokeStyle=roiMode?'#ffb020':'#3ddc84'; ctx.setLineDash(roiMode?[6,4]:[]);
+    ctx.strokeRect(x,y,w,h);
+    if(roiMode){ ctx.fillStyle='rgba(255,176,32,.15)'; ctx.fillRect(x,y,w,h); }
+  };
+  setInterval(draw,300);
+  const norm=e=>{ const R=videoRect(); return {x:(e.clientX-R.x)/R.w,y:(e.clientY-R.y)/R.h}; };
+  cv.onpointerdown=e=>{ if(!roiMode) return; drag=norm(e); cv.setPointerCapture(e.pointerId); };
+  cv.onpointermove=e=>{ if(!drag) return; const p=norm(e); const cl=v=>Math.min(1,Math.max(0,v));
+    det.roi={x:cl(Math.min(drag.x,p.x)),y:cl(Math.min(drag.y,p.y)),w:Math.max(0.02,Math.abs(cl(p.x)-cl(drag.x))),h:Math.max(0.02,Math.abs(cl(p.y)-cl(drag.y)))}; draw(); };
+  cv.onpointerup=cv.onpointercancel=()=>{ if(drag){ drag=null; LS.gq_roi=JSON.stringify(det.roi); det.prev=null; det.ring=[]; } };
+  $('#btnRoi').onclick=()=>{ roiMode=!roiMode; $('#btnRoi').textContent=roiMode?'영역 완료':'영역 설정'; $('#btnRoi').classList.toggle('cur',roiMode); cv.style.pointerEvents=roiMode?'auto':'none'; draw(); };
+  /* 민감도 */
+  const mthr=$('#mthr'), sthr=$('#sthr'), snd2=$('#snd2');
+  mthr.value=det.thr; sthr.value=det.sthr; snd2.value=soundConfirm?'1':'0';
+  const show=()=>{ $('#mthrV').textContent=det.thr+'%'; $('#sthrV').textContent=det.sthr.toFixed(2); };
+  show();
+  mthr.oninput=()=>{ det.thr=+mthr.value; LS.gq_mthr=det.thr; show(); };
+  sthr.oninput=()=>{ det.sthr=+sthr.value; LS.gq_sthr=det.sthr; show(); };
+  snd2.onchange=()=>{ soundConfirm=snd2.value==='1'; LS.gq_snd=snd2.value; $('#snd').value=snd2.value; };
+  $('#btnSens').onclick=()=>{ const p=$('#sens'); p.hidden=!p.hidden; $('#btnSens').classList.toggle('cur',!p.hidden); };
+}
+
+/* =====================================================================
+   모니터
+   ===================================================================== */
+const vF=$('#vFront'), vS=$('#vSide');
+window.gq={get swings(){return swings;},get cur(){return cur;},vF,vS};
+const conns={}; let swings=[], cur=null, speed=1, frontNudge=0, playing=true, total=0;
+
+function startMonitor(){
+  $('#mon').hidden=false; $('#monId').textContent='방 '+room;
+  $('#emptyHint').textContent='측면·정면 카메라 폰에서 같은 방 코드 '+room+' 로 시작하세요';
+  openMonPeer();
+  $('#btnMonLog').onclick=()=>{ monLogEl.hidden=!monLogEl.hidden; };
+  $('#btnPlay').onclick=()=>{ playing?pauseAll():playAll(); };
+  $$('.spd button').forEach(b=>b.onclick=()=>{ speed=+b.dataset.r; $$('.spd button').forEach(x=>x.classList.toggle('cur',x===b)); applySpeed(); });
+  $('#btnPrev').onclick=()=>step(-1); $('#btnNext').onclick=()=>step(1);
+  $('#btnSyncM').onclick=()=>nudge(-1); $('#btnSyncP').onclick=()=>nudge(1);
+  $('#btnSave').onclick=saveCur;
+  $('#btnMonManual').onclick=()=>{
+    if(conns.side&&conns.side.open) conns.side.send(JSON.stringify({type:'trigger',manual:true}));
+    else if(conns.front&&conns.front.open){ const id='M'+Date.now().toString(36); conns.front.send(JSON.stringify({type:'trigger',swingId:id,lat:0})); ensureSwing(id); }
+    else $('#monStatus').textContent='연결된 카메라 없음';
+  };
+  requestAnimationFrame(loop);
+}
+function openMonPeer(){
+  if(peer){ try{peer.destroy();}catch(e){} }
+  setDot('monDot','wait');
+  peer=new Peer(monIdOf(),{debug:1});
+  peer.on('open',id=>{ setDot('monDot','ok'); log('모니터 준비',id); $('#monStatus').textContent='카메라 연결 대기…'; });
+  peer.on('connection',c=>{
+    const st={role:null,inc:null};
+    c.on('open',()=>{ log('연결됨',c.peer); try{ c.dataChannel.binaryType='arraybuffer'; }catch(e){} });
+    c.on('data',d=>{
+      if(typeof d==='string'){ let m; try{m=JSON.parse(d);}catch(e){return;} handleMsg(c,st,m); return; }
+      if(!st.inc) return;
+      if(d instanceof ArrayBuffer) onChunk(st,d);
+      else if(d&&d.arrayBuffer) d.arrayBuffer().then(b=>onChunk(st,b));
+      else if(d&&d.buffer) onChunk(st,d.buffer.slice(d.byteOffset,d.byteOffset+d.byteLength));
+    });
+    c.on('close',()=>{ log('끊김',st.role||c.peer); if(st.role&&conns[st.role]===c){ delete conns[st.role]; updBadges(); } });
+    c.on('error',e=>log('conn err',e.type||e.message));
+  });
+  peer.on('error',e=>{
+    log('피어 오류',e.type); setDot('monDot','bad');
+    if(e.type==='unavailable-id'){ $('#monStatus').textContent='같은 방 코드 모니터가 아직 서버에 남아있음 — 5초 후 재시도'; setTimeout(openMonPeer,5000); }
+    else if(['network','server-error','socket-error','socket-closed'].includes(e.type)) setTimeout(openMonPeer,4000);
+  });
+  peer.on('disconnected',()=>{ setDot('monDot','wait'); log('시그널 끊김 → 재연결'); setTimeout(()=>{ try{ if(peer&&!peer.destroyed) peer.reconnect(); }catch(e){ openMonPeer(); } },1500); });
+}
+function updBadges(){
+  for(const r of ['side','front']){ const on=!!(conns[r]&&conns[r].open); const el=$(r==='side'?'#stSide':'#stFront'); el.textContent=(r==='side'?'측면 ':'정면 ')+(on?'●':'✗'); el.classList.toggle('ok',on); }
+}
+function handleMsg(c,st,m){
+  switch(m.type){
+    case 'hello':
+      st.role=m.role; if(conns[m.role]&&conns[m.role]!==c){ try{conns[m.role].close();}catch(e){} }
+      conns[m.role]=c; updBadges(); log(m.role+' 카메라 연결'); $('#monStatus').textContent=(conns.side&&conns.front)?'준비 완료 — 스윙하세요':'다른 카메라 대기…'; break;
+    case 'ping': c.send(JSON.stringify({type:'pong'})); break;
+    case 'trigger': {
+      log('스윙 감지 ('+(m.src||'')+')'); $('#monStatus').textContent='스윙! 클립 수신 대기…';
+      const f=conns.front; if(f&&f.open&&st.role==='side') f.send(JSON.stringify({type:'trigger',swingId:m.swingId,lat:100}));
+      ensureSwing(m.swingId); break; }
+    case 'clip': st.inc={meta:m,parts:[],got:0,t0:now()}; ensureSwing(m.swingId); break;
+    case 'clip-end': if(st.inc){ if(st.inc.got>=st.inc.meta.size) finalize(st); else log('clip-end 수신했지만 미완성',st.inc.got,'/',st.inc.meta.size); } break;
+  }
+}
+function onChunk(st,buf){
+  const inc=st.inc; if(!inc) return;
+  inc.parts.push(buf); inc.got+=buf.byteLength;
+  if((inc.got&0xFFFFF)<65536) $('#monStatus').textContent=`${inc.meta.role==='side'?'측면':'정면'} 수신 ${Math.round(inc.got/inc.meta.size*100)}%`;
+  if(inc.got>=inc.meta.size) finalize(st);
+}
+function finalize(st){
+  const inc=st.inc; st.inc=null;
+  const blob=new Blob(inc.parts,{type:inc.meta.mime});
+  log(`${inc.meta.role} 클립 ${(blob.size/1e6).toFixed(1)}MB (${((now()-inc.t0)/1000).toFixed(1)}s)`);
+  addClip(inc.meta.swingId,inc.meta.role,blob,inc.meta);
+}
+function ensureSwing(id){
+  let s=swings.find(x=>x.id===id);
+  if(!s){
+    s={id,n:++total,t:Date.now(),clips:{},timer:null}; swings.push(s);
+    while(swings.length>8){ const old=swings.shift(); Object.values(old.clips).forEach(c=>URL.revokeObjectURL(c.url)); if(cur===old) cur=null; }
+    $('#monCount').textContent=total+'회';
+    s.timer=setTimeout(()=>{ if(Object.keys(s.clips).length>=1&&cur!==s) show(s); },12000);
+    renderHist();
+  }
+  return s;
+}
+function addClip(id,r,blob,meta){
+  const s=ensureSwing(id);
+  if(s.clips[r]) URL.revokeObjectURL(s.clips[r].url);
+  s.clips[r]={blob,meta,url:URL.createObjectURL(blob)};
+  const expect=(conns.front?1:0)+(conns.side?1:0), have=Object.keys(s.clips).length;
+  if(have>=2||have>=Math.max(1,expect)){ clearTimeout(s.timer); show(s); }
+  else $('#monStatus').textContent=(r==='side'?'측면':'정면')+' 수신 완료, 나머지 대기…';
+  renderHist();
+}
+function renderHist(){
+  const h=$('#hist'); h.innerHTML='';
+  swings.slice().reverse().forEach(s=>{ const b=document.createElement('button'); b.className='sm'+(s===cur?' cur':''); b.textContent='#'+s.n+(Object.keys(s.clips).length<2?'*':''); b.onclick=()=>show(s); h.appendChild(b); });
+}
+
+/* ---- 재생 ---- */
+function loadClip(v,c){
+  return new Promise((res,rej)=>{
+    v.pause(); v._ok=false;
+    v._start=Math.max(0,c.meta.impactOffset-c.meta.pre); v._end=c.meta.impactOffset+c.meta.post;
+    const cleanup=()=>{ v.removeEventListener('loadedmetadata',onMeta); v.removeEventListener('timeupdate',onDur); v.removeEventListener('durationchange',onDur); v.removeEventListener('error',onErr); };
+    const done=()=>{ cleanup(); if(isFinite(v.duration)&&v.duration>0) v._end=Math.min(v._end,v.duration-0.02); v._ok=true; res(); };
+    const onDur=()=>{ if(isFinite(v.duration)&&v.duration>0) done(); };
+    const onMeta=()=>{ if(isFinite(v.duration)&&v.duration>0) return done(); v.addEventListener('timeupdate',onDur); v.addEventListener('durationchange',onDur); v.currentTime=1e101; };
+    const onErr=()=>{ cleanup(); rej(v.error||new Error('load error')); };
+    v.addEventListener('loadedmetadata',onMeta); v.addEventListener('error',onErr);
+    v.src=c.url; v.load();
+    setTimeout(()=>{ if(!v._ok){ cleanup(); rej(new Error('로드 시간초과')); } },8000);
+  });
+}
+async function show(s){
+  cur=s; renderHist(); $('#empty').hidden=true; $('#monStatus').textContent=`#${s.n} 재생 중`;
+  const jobs=[];
+  for(const [r,v] of [['front',vF],['side',vS]]){
+    const c=s.clips[r];
+    if(!c){ v.hidden=true; v.removeAttribute('src'); v._ok=false; continue; }
+    v.hidden=false; jobs.push(loadClip(v,c).catch(e=>{ log(r+' 로드 실패',e&&e.message); v.hidden=true; }));
+  }
+  await Promise.all(jobs);
+  if(cur!==s) return;
+  applySpeed(); seekAll(0); playAll();
+}
+const vids=()=>[vF,vS].filter(v=>!v.hidden&&v._ok);
+const offs=v=>v._start+(v===vF?frontNudge:0);
+const clampT=(v,t)=>Math.min(Math.max(0,t),isFinite(v.duration)?v.duration-0.02:t);
+function seekAll(rel){ for(const v of vids()) v.currentTime=clampT(v,offs(v)+rel); }
+function playAll(){ playing=true; $('#btnPlay').textContent='⏸'; vids().forEach(v=>v.play().catch(()=>{})); }
+function pauseAll(){ playing=false; $('#btnPlay').textContent='▶'; vids().forEach(v=>v.pause()); }
+function applySpeed(){ vids().forEach(v=>{ v.playbackRate=speed; }); }
+function master(){ const vs=vids(); return vs.includes(vS)?vS:vs[0]; }
+function loop(){
+  requestAnimationFrame(loop);
+  if(!cur||!playing) return; const vs=vids(); if(!vs.length) return;
+  const m=master(), rel=m.currentTime-offs(m);
+  if(m.currentTime>=m._end||m.ended){ seekAll(0); vs.forEach(v=>{ if(v.paused) v.play().catch(()=>{}); }); return; }
+  for(const v of vs){ if(v===m) continue; const want=offs(v)+rel; if(Math.abs(v.currentTime-want)>0.1&&!v.seeking) v.currentTime=clampT(v,want); if(v.paused&&!v.seeking) v.play().catch(()=>{}); }
+}
+function step(dir){
+  const m=master(); if(!m) return; pauseAll();
+  const len=m._end-m._start; let rel=m.currentTime-offs(m)+dir/60; rel=Math.min(Math.max(0,rel),len); seekAll(rel);
+}
+function nudge(dir){
+  frontNudge+=dir/60; const m=master(); const rel=m?m.currentTime-offs(m):0;
+  $('#monStatus').textContent=`정면 싱크 ${(frontNudge*60).toFixed(0)}프레임`; seekAll(rel);
+}
+function saveCur(){
+  if(!cur) return;
+  const ext=m=>/mp4/.test(m)?'mp4':'webm';
+  const list=Object.entries(cur.clips);
+  list.forEach(([r,c],i)=>setTimeout(()=>{ const a=document.createElement('a'); a.href=c.url; a.download=`swing${String(cur.n).padStart(2,'0')}-${r}.${ext(c.meta.mime)}`; document.body.appendChild(a); a.click(); a.remove(); },i*600));
+  $('#monStatus').textContent=`#${cur.n} 저장 (${list.length}개 파일)`;
+}
+})();
+</script>
+</body>
+</html>
