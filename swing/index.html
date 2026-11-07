@@ -243,7 +243,9 @@ function callMonitor(){
   clearTimeout(liveRetry);
   if(!liveOn){ log('라이브 전송 꺼짐'); return; }
   if(!liveStream){ log('라이브 스트림 없음'); return; }
-  if(!peer||peer.destroyed||peer.disconnected||!camConn||!camConn.open) return;
+  if(!peer||peer.destroyed){ log('라이브: 피어 없음'); return; }
+  if(peer.disconnected){ log('라이브: 시그널 서버 끊김 → 재연결 후 재시도'); try{peer.reconnect();}catch(e){} liveRetry=setTimeout(callMonitor,4000); return; }
+  if(!camConn||!camConn.open){ log('라이브: 모니터 데이터 연결 없음'); return; }
   try{
     if(liveCall){ try{liveCall.close();}catch(e){} liveCall=null; }
     liveOk=false; liveTries++;
@@ -395,6 +397,7 @@ function dial(){
     if(typeof d!=='string') return; let m; try{m=JSON.parse(d);}catch(e){return;}
     if(m.type==='pong') lastPong=now();
     else if(m.type==='live-ok'){ liveOk=true; liveTries=0; clearTimeout(liveRetry); log('라이브 수신 확인'); }
+    else if(m.type==='live-req'){ if(!liveOk){ liveTries=0; callMonitor(); } }
     else if(m.type==='trigger'){
       if(role==='front'){ capture(m.swingId,now()-(m.lat||100)); log('트리거 수신',m.swingId); }
       else if(m.manual) triggerSwing('manual');
@@ -604,7 +607,7 @@ function handleMsg(c,st,m){
   switch(m.type){
     case 'hello':
       st.role=m.role; if(conns[m.role]&&conns[m.role]!==c){ try{conns[m.role].close();}catch(e){} }
-      conns[m.role]=c; updBadges(); log(m.role+' 카메라 연결'); $('#monStatus').textContent=(conns.side&&conns.front)?'준비 완료 — 스윙하세요':'다른 카메라 대기…'; break;
+      conns[m.role]=c; updBadges(); log(m.role+' 카메라 연결'); setTimeout(()=>{ if(c.open&&!liveEl(m.role).srcObject) c.send(JSON.stringify({type:'live-req'})); },1500); $('#monStatus').textContent=(conns.side&&conns.front)?'준비 완료 — 스윙하세요':'다른 카메라 대기…'; break;
     case 'ping': c.send(JSON.stringify({type:'pong'})); break;
     case 'trigger': {
       log('스윙 감지 ('+(m.src||'')+')'); $('#monStatus').textContent='스윙! 클립 수신 대기…';
