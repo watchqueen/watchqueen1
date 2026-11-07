@@ -62,7 +62,7 @@ input[type=range]{flex:1;min-width:100px}
 
 <!-- ============ 설정 ============ -->
 <div id="setup" class="screen">
-  <h1>⛳ 스윙 리플레이 (3폰)</h1>
+  <h1>⛳ 스윙 리플레이 (3폰) <span class="hint" id="ver"></span></h1>
   <div class="card">
     <div class="row"><label>방 코드</label><input id="room" type="text" maxlength="8" style="width:120px;text-transform:uppercase"><span class="hint">세 폰 모두 같은 코드</span></div>
     <div class="hint">① 갤럭시 한 대 핫스팟 ON → 나머지 두 대 연결<br>② 세 폰 모두 이 페이지를 <b>크롬</b>으로 열기<br>③ <b>모니터 → 측면 → 정면</b> 순서로 시작 (처음 접속 때만 인터넷 필요)</div>
@@ -152,6 +152,14 @@ input[type=range]{flex:1;min-width:100px}
 <script>
 (()=>{
 'use strict';
+const APP_VER='1108-0016';
+/* GitHub Pages가 10분 캐시를 걸어서 새로고침해도 옛 버전이 뜰 수 있음 → 서버의 최신 버전과 비교해 다르면 캐시 우회 주소로 재로딩 */
+(async()=>{
+  try{
+    const r=await fetch(location.pathname+'?chk='+Date.now(),{cache:'no-store'}); const t=await r.text();
+    const m=t.match(/APP_VER='([^']+)'/); if(m&&m[1]!==APP_VER){ location.replace(location.pathname+'?v='+m[1]); }
+  }catch(e){}
+})();
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const LS=window.localStorage, now=()=>performance.now();
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -190,7 +198,7 @@ window.addEventListener('unhandledrejection',e=>log('REJ',(e.reason&&e.reason.me
 function setDot(id,cls){ $('#'+id).className='dot '+(cls||''); }
 
 /* ---------- 설정 화면 ---------- */
-const roomIn=$('#room');
+const roomIn=$('#room'); $('#ver').textContent='v'+APP_VER;
 roomIn.value=LS.gq_room||String(Math.floor(1000+Math.random()*9000));
 ['res','br','snd','live'].forEach(k=>{ if(LS['gq_'+k]) $('#'+k).value=LS['gq_'+k]; $('#'+k).onchange=e=>LS['gq_'+k]=e.target.value; });
 function pickMime(){
@@ -276,7 +284,7 @@ async function startCamera(){
   const vt=stream.getVideoTracks()[0], st=vt.getSettings();
   mime=pickMime(); if(!mime){ $('#camInfo').textContent='녹화 코덱 없음'; return; }
   const codec=/h264|avc1/.test(mime)?'H264':/vp9/.test(mime)?'VP9':/vp8/.test(mime)?'VP8':'?';
-  $('#camInfo').textContent=`${st.width}×${st.height} ${Math.round(st.frameRate||0)}fps · ${codec} ${bitrate/1e6}M`;
+  $('#camInfo').textContent=`${st.width}×${st.height} ${Math.round(st.frameRate||0)}fps · ${codec} ${bitrate/1e6}M · v${APP_VER}`;
   log('카메라',st.width+'x'+st.height,st.frameRate+'fps',mime);
   if(codec!=='H264') log('주의: 하드웨어 H264 아님 — 발열/프레임 저하 시 1080p30으로');
   vt.onended=()=>{ log('카메라 트랙 종료'); setDot('camDot','bad'); };
@@ -546,7 +554,7 @@ window.gq={get swings(){return swings;},get cur(){return cur;},get mode(){return
 const conns={}; let swings=[], cur=null, speed=1, frontNudge=0, playing=true, total=0;
 
 async function startMonitor(){
-  $('#mon').hidden=false; $('#monId').textContent='방 '+room;
+  $('#mon').hidden=false; $('#monId').textContent='방 '+room; $('#monId').title='v'+APP_VER; log('버전 v'+APP_VER);
   /* 크롬은 카메라/마이크 권한이 있는 페이지에만 실제 로컬 IP를 내보냄 → 같은 와이파이 직결을 위해 마이크 권한만 받고 바로 끔 */
   try{ const st=await navigator.mediaDevices.getUserMedia({audio:true}); st.getTracks().forEach(t=>t.stop()); log('로컬 IP 노출용 마이크 권한 OK'); }catch(e){ log('마이크 권한 없음(직결 안 될 수 있음)',e.name); }
   $('#emptyHint').textContent='측면·정면 카메라 폰에서 같은 방 코드 '+room+' 로 시작하세요';
