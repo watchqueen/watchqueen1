@@ -234,8 +234,8 @@ let liveOn=true, liveStream=null, liveCall=null, liveOk=false, liveTries=0, live
 async function makeLiveStream(){
   if(!liveOn) return;
   try{
+    /* 해상도 제약을 걸면 세로 회전 정보가 빠져 가로로 보임 → 트랙은 원본 그대로, 축소는 인코더(scaleResolutionDownBy)에서 */
     const t=stream.getVideoTracks()[0].clone();
-    try{ await t.applyConstraints({width:{ideal:720},height:{ideal:1280},frameRate:{ideal:30}}); }catch(e){}
     liveStream=new MediaStream([t]); const st=t.getSettings(); log('라이브 스트림',st.width+'x'+st.height,Math.round(st.frameRate||0)+'fps');
   }catch(e){ log('라이브 스트림 실패',e.message); liveStream=null; }
 }
@@ -257,7 +257,7 @@ function callMonitor(){
     /* 8초 안에 모니터가 수신 확인(live-ok) 안 주면 재시도 (최대 5회) */
     liveRetry=setTimeout(()=>{ if(!liveOk&&liveTries<5){ log('라이브 수신 확인 없음 → 재시도 '+liveTries); callMonitor(); } },8000);
     /* 비트레이트 상한 2Mbps: 클립 전송과 와이파이를 나눠 써야 하므로 */
-    setTimeout(()=>{ try{ const pc=call.peerConnection; pc&&pc.getSenders().forEach(sn=>{ if(sn.track&&sn.track.kind==='video'){ const p=sn.getParameters(); if(!p.encodings||!p.encodings.length) p.encodings=[{}]; p.encodings[0].maxBitrate=2e6; sn.setParameters(p).catch(()=>{}); } }); }catch(e){} },1500);
+    setTimeout(()=>{ try{ const pc=call.peerConnection; pc&&pc.getSenders().forEach(sn=>{ if(sn.track&&sn.track.kind==='video'){ const p=sn.getParameters(); if(!p.encodings||!p.encodings.length) p.encodings=[{}]; Object.assign(p.encodings[0],{maxBitrate:2e6,scaleResolutionDownBy:2,maxFramerate:30}); p.degradationPreference='maintain-resolution'; sn.setParameters(p).catch(e=>log('라이브 파라미터',e.message)); } }); }catch(e){} },1500);
     log('라이브 전송 시작');
   }catch(e){ log('라이브 호출 실패',e.message); }
 }
