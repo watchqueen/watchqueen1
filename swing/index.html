@@ -154,6 +154,22 @@ const SEG=6000, MIN_OTHER=3500;     // 녹화기 교대 주기 / 상대 녹화�
 const LOCKOUT=6000;                 // 스윙 감지 후 재감지 금지 (ms)
 let role=null, room=null, peer=null;
 const monIdOf=()=>'gswing-'+room+'-mon';
+const ICE={iceServers:[
+  {urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']},
+  {urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'},
+  {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}
+],sdpSemantics:'unified-plan'};
+/* ICE 진단 로그: 어떤 경로(host=같은 네트워크 / srflx=NAT 통과 / relay=TURN 중계)로 붙는지 */
+function iceDiag(c,label){
+  try{
+    c.on('iceStateChanged',st=>log(label+' ICE',st));
+    const pc=c.peerConnection; if(!pc) return;
+    const seen=new Set();
+    pc.addEventListener('icecandidate',e=>{ if(e.candidate){ const t=(e.candidate.candidate.match(/ typ (\w+)/)||[])[1]; if(t&&!seen.has(t)){ seen.add(t); log(label+' 후보',t); } } });
+    pc.addEventListener('icegatheringstatechange',()=>log(label+' 수집',pc.iceGatheringState));
+    pc.addEventListener('connectionstatechange',()=>{ log(label+' 연결상태',pc.connectionState); if(pc.connectionState==='connected'){ pc.getStats().then(r=>{ r.forEach(x=>{ if(x.type==='candidate-pair'&&x.state==='succeeded'&&x.nominated){ const l=r.get(x.localCandidateId),rm=r.get(x.remoteCandidateId); log(label+' 경로',(l&&l.candidateType)+'→'+(rm&&rm.candidateType)); } }); }).catch(()=>{}); } });
+  }catch(e){}
+}
 
 /* ---------- 로그 ---------- */
 const logEl=$('#log'), monLogEl=$('#monLog');
@@ -302,7 +318,7 @@ async function sendOne(it){
 let dialTimer=null, pingTimer=null, lastPong=0;
 function connectCamPeer(){
   if(peer){ try{peer.destroy();}catch(e){} }
-  peer=new Peer({debug:1});
+  peer=new Peer({debug:1,config:ICE});
   peer.on('open',id=>{ log('피어 준비',id); dial(); });
   peer.on('error',e=>{
     log('피어 오류',e.type);
@@ -323,8 +339,8 @@ function dial(){
   setDot('camDot','wait'); log('모니터 연결 시도',monIdOf());
   let c; try{ c=peer.connect(monIdOf(),{serialization:'raw',reliable:true}); }catch(e){ log('connect 예외',e.message); }
   if(!c){ schedDial(3000); return; }
-  camConn=c;
-  const to=setTimeout(()=>{ if(!c.open){ log('연결 시간초과'); try{c.close();}catch(e){} if(camConn===c) camConn=null; schedDial(1000); } },10000);
+  camConn=c; iceDiag(c,'→모니터');
+  const to=setTimeout(()=>{ if(!c.open){ log('연결 시간초과'); try{c.close();}catch(e){} if(camConn===c) camConn=null; schedDial(1000); } },25000);
   c.on('open',()=>{
     clearTimeout(to); setDot('camDot','ok'); log('모니터 연결됨');
     try{ c.dataChannel.binaryType='arraybuffer'; }catch(e){}
@@ -483,10 +499,10 @@ function startMonitor(){
 function openMonPeer(){
   if(peer){ try{peer.destroy();}catch(e){} }
   setDot('monDot','wait');
-  peer=new Peer(monIdOf(),{debug:1});
+  peer=new Peer(monIdOf(),{debug:1,config:ICE});
   peer.on('open',id=>{ setDot('monDot','ok'); log('모니터 준비',id); $('#monStatus').textContent='카메라 연결 대기…'; });
   peer.on('connection',c=>{
-    const st={role:null,inc:null};
+    const st={role:null,inc:null}; log('카메라 접속 요청',c.peer.slice(0,8)); iceDiag(c,'←카메라');
     c.on('open',()=>{ log('연결됨',c.peer); try{ c.dataChannel.binaryType='arraybuffer'; }catch(e){} });
     c.on('data',d=>{
       if(typeof d==='string'){ let m; try{m=JSON.parse(d);}catch(e){return;} handleMsg(c,st,m); return; }
