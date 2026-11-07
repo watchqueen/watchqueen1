@@ -165,7 +165,7 @@ function iceDiag(c,label){
     c.on('iceStateChanged',st=>log(label+' ICE',st));
     const pc=c.peerConnection; if(!pc) return;
     const seen=new Set();
-    pc.addEventListener('icecandidate',e=>{ if(e.candidate){ const t=(e.candidate.candidate.match(/ typ (\w+)/)||[])[1]; if(t&&!seen.has(t)){ seen.add(t); log(label+' 후보',t); } } });
+    pc.addEventListener('icecandidate',e=>{ if(e.candidate){ const m=e.candidate.candidate.match(/candidate:\S+ \d+ (\w+) \d+ (\S+) (\d+) typ (\w+)/); const t=m?m[4]:'?'; if(!seen.has(t)){ seen.add(t); log(label+' 후보',t,m?m[2]+' '+m[1]:''); } } });
     pc.addEventListener('icegatheringstatechange',()=>log(label+' 수집',pc.iceGatheringState));
     pc.addEventListener('connectionstatechange',()=>{ log(label+' 연결상태',pc.connectionState); if(pc.connectionState==='connected'){ pc.getStats().then(r=>{ r.forEach(x=>{ if(x.type==='candidate-pair'&&x.state==='succeeded'&&x.nominated){ const l=r.get(x.localCandidateId),rm=r.get(x.remoteCandidateId); log(label+' 경로',(l&&l.candidateType)+'→'+(rm&&rm.candidateType)); } }); }).catch(()=>{}); } });
   }catch(e){}
@@ -340,7 +340,7 @@ function dial(){
   let c; try{ c=peer.connect(monIdOf(),{serialization:'raw',reliable:true}); }catch(e){ log('connect 예외',e.message); }
   if(!c){ schedDial(3000); return; }
   camConn=c; iceDiag(c,'→모니터');
-  const to=setTimeout(()=>{ if(!c.open){ log('연결 시간초과'); try{c.close();}catch(e){} if(camConn===c) camConn=null; schedDial(1000); } },25000);
+  const to=setTimeout(()=>{ if(!c.open){ log('연결 시간초과'); try{c.close();}catch(e){} if(camConn===c){ camConn=null; schedDial(1000); } } },25000);
   c.on('open',()=>{
     clearTimeout(to); setDot('camDot','ok'); log('모니터 연결됨');
     try{ c.dataChannel.binaryType='arraybuffer'; }catch(e){}
@@ -361,7 +361,7 @@ function dial(){
       else if(m.manual) triggerSwing('manual');
     }
   });
-  c.on('close',()=>{ clearTimeout(to); clearInterval(pingTimer); setDot('camDot','bad'); log('모니터 연결 끊김'); if(camConn===c) camConn=null; schedDial(1500); });
+  c.on('close',()=>{ clearTimeout(to); if(camConn!==c) return; clearInterval(pingTimer); setDot('camDot','bad'); log('모니터 연결 끊김'); camConn=null; schedDial(1500); });
   c.on('error',e=>log('연결 오류',e.type||e.message));
 }
 
@@ -479,8 +479,10 @@ const vF=$('#vFront'), vS=$('#vSide');
 window.gq={get swings(){return swings;},get cur(){return cur;},vF,vS};
 const conns={}; let swings=[], cur=null, speed=1, frontNudge=0, playing=true, total=0;
 
-function startMonitor(){
+async function startMonitor(){
   $('#mon').hidden=false; $('#monId').textContent='방 '+room;
+  /* 크롬은 카메라/마이크 권한이 있는 페이지에만 실제 로컬 IP를 내보냄 → 같은 와이파이 직결을 위해 마이크 권한만 받고 바로 끔 */
+  try{ const st=await navigator.mediaDevices.getUserMedia({audio:true}); st.getTracks().forEach(t=>t.stop()); log('로컬 IP 노출용 마이크 권한 OK'); }catch(e){ log('마이크 권한 없음(직결 안 될 수 있음)',e.name); }
   $('#emptyHint').textContent='측면·정면 카메라 폰에서 같은 방 코드 '+room+' 로 시작하세요';
   openMonPeer();
   $('#btnMonLog').onclick=()=>{ monLogEl.hidden=!monLogEl.hidden; };
