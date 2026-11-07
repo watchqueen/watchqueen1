@@ -77,6 +77,8 @@ input[type=range]{flex:1;min-width:100px}
       <option value="16">16 Mbps (권장)</option><option value="24">24 Mbps</option><option value="12">12 Mbps</option><option value="8">8 Mbps</option></select></div>
     <div class="row"><label>소리 확인</label><select id="snd">
       <option value="1">켜기 (움직임 + 소리 둘 다)</option><option value="0">끄기 (움직임만)</option></select><span class="hint">측면 카메라만 해당</span></div>
+    <div class="row"><label>라이브 전송</label><select id="live">
+      <option value="1">켜기 (모니터에 실시간 화면)</option><option value="0">끄기 (발열 시)</option></select></div>
   </div>
   <div class="card">
     <div class="hint">역할 선택 (누르면 바로 시작)</div>
@@ -124,6 +126,8 @@ input[type=range]{flex:1;min-width:100px}
     <span class="badge" id="stSide">측면 ✗</span><span class="badge" id="stFront">정면 ✗</span>
     <span class="badge" id="monCount">0회</span>
     <span class="tag" id="monStatus" style="flex:1;min-width:120px"></span>
+    <button class="sm" id="btnMode">라이브</button>
+    <select id="autoLive" class="sm" style="padding:6px 8px;border-radius:8px;font-size:13px"><option value="0">리플레이 유지</option><option value="10">10초 후 라이브</option><option value="20">20초 후 라이브</option><option value="30">30초 후 라이브</option></select>
     <button class="sm" id="btnMonManual">수동 촬영</button>
     <button class="sm" id="btnMonLog">로그</button>
   </div>
@@ -131,6 +135,8 @@ input[type=range]{flex:1;min-width:100px}
   <div id="stage">
     <video id="vFront" playsinline muted hidden></video>
     <video id="vSide" playsinline hidden></video>
+    <video id="lFront" playsinline muted autoplay hidden></video>
+    <video id="lSide" playsinline muted autoplay hidden></video>
     <div id="empty"><div style="font-size:40px">⛳</div><div>카메라가 연결되고 스윙하면<br>여기에 정면 · 측면 리플레이가 뜹니다</div><div class="hint" id="emptyHint"></div></div>
   </div>
   <div id="monBot">
@@ -186,7 +192,7 @@ function setDot(id,cls){ $('#'+id).className='dot '+(cls||''); }
 /* ---------- 설정 화면 ---------- */
 const roomIn=$('#room');
 roomIn.value=LS.gq_room||String(Math.floor(1000+Math.random()*9000));
-['res','br','snd'].forEach(k=>{ if(LS['gq_'+k]) $('#'+k).value=LS['gq_'+k]; $('#'+k).onchange=e=>LS['gq_'+k]=e.target.value; });
+['res','br','snd','live'].forEach(k=>{ if(LS['gq_'+k]) $('#'+k).value=LS['gq_'+k]; $('#'+k).onchange=e=>LS['gq_'+k]=e.target.value; });
 function pickMime(){
   if(!window.MediaRecorder) return null;
   const c=['video/webm;codecs=h264,opus','video/webm;codecs=h264',
@@ -223,12 +229,35 @@ async function wakeLock(){
    카메라
    ===================================================================== */
 let stream=null, mime=null, bitrate=16e6, camVideo=$('#camVideo'), recs=[null,null], swingSeq=0, camConn=null, dim=false;
+let liveOn=true, liveStream=null, liveCall=null;
+/* 녹화용 트랙을 복제해 720p/30fps로 줄인 실시간 스트림 (녹화 화질엔 영향 없음) */
+async function makeLiveStream(){
+  if(!liveOn) return;
+  try{
+    const t=stream.getVideoTracks()[0].clone();
+    try{ await t.applyConstraints({width:{ideal:720},height:{ideal:1280},frameRate:{ideal:30}}); }catch(e){}
+    liveStream=new MediaStream([t]); const st=t.getSettings(); log('라이브 스트림',st.width+'x'+st.height,Math.round(st.frameRate||0)+'fps');
+  }catch(e){ log('라이브 스트림 실패',e.message); liveStream=null; }
+}
+function callMonitor(){
+  if(!liveStream||!peer||peer.destroyed||peer.disconnected) return;
+  try{
+    if(liveCall){ try{liveCall.close();}catch(e){} liveCall=null; }
+    const call=peer.call(monIdOf(),liveStream,{metadata:{role}});
+    if(!call) return; liveCall=call;
+    call.on('error',e=>log('라이브 오류',e.type||e.message));
+    call.on('close',()=>{ if(liveCall===call) liveCall=null; });
+    /* 비트레이트 상한 2Mbps: 클립 전송과 와이파이를 나눠 써야 하므로 */
+    setTimeout(()=>{ try{ const pc=call.peerConnection; pc&&pc.getSenders().forEach(sn=>{ if(sn.track&&sn.track.kind==='video'){ const p=sn.getParameters(); if(!p.encodings||!p.encodings.length) p.encodings=[{}]; p.encodings[0].maxBitrate=2e6; sn.setParameters(p).catch(()=>{}); } }); }catch(e){} },1500);
+    log('라이브 전송 시작');
+  }catch(e){ log('라이브 호출 실패',e.message); }
+}
 const pending=[];
 
 async function startCamera(){
   $('#cam').hidden=false; $('#camRole').textContent=role==='side'?'측면':'정면';
   const [w,h,fps]=$('#res').value.split('x').map(Number); bitrate=Number($('#br').value)*1e6;
-  soundConfirm=($('#snd').value==='1');
+  soundConfirm=($('#snd').value==='1'); liveOn=($('#live').value!=='0');
   try{
     stream=await navigator.mediaDevices.getUserMedia({
       video:{facingMode:{ideal:'environment'},width:{ideal:w},height:{ideal:h},frameRate:{ideal:fps}},
@@ -243,6 +272,7 @@ async function startCamera(){
   if(codec!=='H264') log('주의: 하드웨어 H264 아님 — 발열/프레임 저하 시 1080p30으로');
   vt.onended=()=>{ log('카메라 트랙 종료'); setDot('camDot','bad'); };
   startRecorders();
+  await makeLiveStream();
   setupRoiCanvas();
   if(role==='side') startDetector();
   connectCamPeer();
@@ -345,6 +375,7 @@ function dial(){
     clearTimeout(to); setDot('camDot','ok'); log('모니터 연결됨');
     try{ c.dataChannel.binaryType='arraybuffer'; }catch(e){}
     c.send(JSON.stringify({type:'hello',role}));
+    callMonitor();
     lastPong=now(); clearInterval(pingTimer);
     pingTimer=setInterval(()=>{
       if(!c.open) return;
@@ -361,7 +392,7 @@ function dial(){
       else if(m.manual) triggerSwing('manual');
     }
   });
-  c.on('close',()=>{ clearTimeout(to); if(camConn!==c) return; clearInterval(pingTimer); setDot('camDot','bad'); log('모니터 연결 끊김'); camConn=null; schedDial(1500); });
+  c.on('close',()=>{ clearTimeout(to); if(camConn!==c) return; clearInterval(pingTimer); setDot('camDot','bad'); log('모니터 연결 끊김'); camConn=null; if(liveCall){ try{liveCall.close();}catch(e){} liveCall=null; } schedDial(1500); });
   c.on('error',e=>log('연결 오류',e.type||e.message));
 }
 
@@ -475,8 +506,32 @@ function setupRoiCanvas(){
 /* =====================================================================
    모니터
    ===================================================================== */
-const vF=$('#vFront'), vS=$('#vSide');
-window.gq={get swings(){return swings;},get cur(){return cur;},vF,vS};
+const vF=$('#vFront'), vS=$('#vSide'), lF=$('#lFront'), lS=$('#lSide');
+let mode='live', autoLiveTimer=null;
+const liveEl=r=>r==='front'?lF:lS;
+function setMode(m){
+  mode=m; clearTimeout(autoLiveTimer);
+  $('#btnMode').textContent=m==='live'?'리플레이':'라이브'; $('#btnMode').classList.toggle('cur',m==='live');
+  if(m==='live'){
+    vF.hidden=vS.hidden=true; vF.pause(); vS.pause(); playing=false; $('#btnPlay').textContent='▶';
+    for(const v of [lF,lS]){ v.hidden=!v.srcObject; if(v.srcObject) v.play().catch(()=>{}); }
+    $('#empty').hidden=!!(lF.srcObject||lS.srcObject);
+    $('#monStatus').textContent=(lF.srcObject||lS.srcObject)?'라이브':'라이브 대기 (카메라 연결 전)';
+  }else{
+    lF.hidden=lS.hidden=true;
+    for(const v of [vF,vS]) v.hidden=!v._ok;
+    $('#empty').hidden=!!(vF._ok||vS._ok);
+    if(cur&&!playing) playAll();
+    const a=+($('#autoLive').value||0); if(a>0) autoLiveTimer=setTimeout(()=>setMode('live'),a*1000);
+  }
+}
+function onLiveStream(r,st){
+  const v=liveEl(r); v.srcObject=st; v.muted=true; v.play().catch(()=>{});
+  log(r+' 라이브 수신');
+  st.getVideoTracks().forEach(t=>{ t.onended=()=>{ if(v.srcObject===st){ v.srcObject=null; v.hidden=true; if(mode==='live') setMode('live'); } }; });
+  if(mode==='live') setMode('live');
+}
+window.gq={get swings(){return swings;},get cur(){return cur;},get mode(){return mode;},vF,vS,lF,lS};
 const conns={}; let swings=[], cur=null, speed=1, frontNudge=0, playing=true, total=0;
 
 async function startMonitor(){
@@ -486,6 +541,9 @@ async function startMonitor(){
   $('#emptyHint').textContent='측면·정면 카메라 폰에서 같은 방 코드 '+room+' 로 시작하세요';
   openMonPeer();
   $('#btnMonLog').onclick=()=>{ monLogEl.hidden=!monLogEl.hidden; };
+  $('#btnMode').onclick=()=>setMode(mode==='live'?'replay':'live');
+  if(LS.gq_autolive) $('#autoLive').value=LS.gq_autolive; $('#autoLive').onchange=e=>{ LS.gq_autolive=e.target.value; if(mode==='replay') setMode('replay'); };
+  setMode('live');
   $('#btnPlay').onclick=()=>{ playing?pauseAll():playAll(); };
   $$('.spd button').forEach(b=>b.onclick=()=>{ speed=+b.dataset.r; $$('.spd button').forEach(x=>x.classList.toggle('cur',x===b)); applySpeed(); });
   $('#btnPrev').onclick=()=>step(-1); $('#btnNext').onclick=()=>step(1);
@@ -503,6 +561,13 @@ function openMonPeer(){
   setDot('monDot','wait');
   peer=new Peer(monIdOf(),{debug:1,config:ICE});
   peer.on('open',id=>{ setDot('monDot','ok'); log('모니터 준비',id); $('#monStatus').textContent='카메라 연결 대기…'; });
+  peer.on('call',call=>{
+    const r=(call.metadata&&call.metadata.role)||'side';
+    call.answer();
+    call.on('stream',st=>onLiveStream(r,st));
+    call.on('error',e=>log('라이브 오류',e.type||e.message));
+    call.on('close',()=>{ const v=liveEl(r); if(v.srcObject&&!v.srcObject.active){ v.srcObject=null; v.hidden=true; if(mode==='live') setMode('live'); } });
+  });
   peer.on('connection',c=>{
     const st={role:null,inc:null}; log('카메라 접속 요청',c.peer.slice(0,8)); iceDiag(c,'←카메라');
     c.on('open',()=>{ log('연결됨',c.peer); try{ c.dataChannel.binaryType='arraybuffer'; }catch(e){} });
@@ -598,11 +663,11 @@ async function show(s){
   for(const [r,v] of [['front',vF],['side',vS]]){
     const c=s.clips[r];
     if(!c){ v.hidden=true; v.removeAttribute('src'); v._ok=false; continue; }
-    v.hidden=false; jobs.push(loadClip(v,c).catch(e=>{ log(r+' 로드 실패',e&&e.message); v.hidden=true; }));
+    jobs.push(loadClip(v,c).catch(e=>{ log(r+' 로드 실패',e&&e.message); v._ok=false; }));
   }
   await Promise.all(jobs);
   if(cur!==s) return;
-  applySpeed(); seekAll(0); playAll();
+  setMode('replay'); applySpeed(); seekAll(0); playAll();
 }
 const vids=()=>[vF,vS].filter(v=>!v.hidden&&v._ok);
 const offs=v=>v._start+(v===vF?frontNudge:0);
